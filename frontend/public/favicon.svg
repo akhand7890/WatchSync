@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff5451" />
+      <stop offset="50%" stop-color="#ffb3ad" />
+      <stop offset="100%" stop-color="#d0bcff" />
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff5451" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#131315" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Outer Glow Background -->
+  <circle cx="50" cy="50" r="45" fill="url(#bgGlow)" />
+  <circle cx="50" cy="50" r="42" fill="#131315" stroke="url(#glowGrad)" stroke-width="3" />
+  
+  <!-- Synchronized Wave Rings -->
+  <circle cx="50" cy="50" r="32" stroke="#ffb3ad" stroke-width="2" stroke-dasharray="8 6" opacity="0.6" />
+  <circle cx="50" cy="50" r="24" stroke="#d0bcff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.8" />
+  
+  <!-- Play Triangle Icon -->
+  <path d="M42 34 L66 50 L42 66 Z" fill="url(#glowGrad)" />
+</svg>

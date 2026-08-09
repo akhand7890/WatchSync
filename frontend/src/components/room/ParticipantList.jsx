@@ -1,0 +1,51 @@
+import { AnimatePresence } from 'framer-motion'
+import { Users } from 'lucide-react'
+import ParticipantCard from './ParticipantCard'
+import { useRoomContext } from '../../context/RoomContext'
+
+/**
+ * ParticipantList — scrollable list of all room participants.
+ * Ordered: host first, then mods, then participants.
+ */
+export default function ParticipantList() {
+  const { participants } = useRoomContext()
+
+  // Deduplicate participants by username, keeping highest role entry
+  const uniqueMap = new Map()
+  participants.forEach(p => {
+    const key = p.username.toLowerCase().trim()
+    const existing = uniqueMap.get(key)
+    if (!existing) {
+      uniqueMap.set(key, p)
+    } else {
+      const order = { host: 0, moderator: 1, participant: 2, viewer: 3 }
+      if ((order[p.role] ?? 4) < (order[existing.role] ?? 4)) {
+        uniqueMap.set(key, p)
+      }
+    }
+  })
+
+  const sorted = Array.from(uniqueMap.values()).sort((a, b) => {
+    const order = { host: 0, moderator: 1, participant: 2, viewer: 3 }
+    return (order[a.role] ?? 4) - (order[b.role] ?? 4)
+  })
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full gap-3 text-[#e4beba]/40">
+          <Users className="w-10 h-10" />
+          <p className="font-[Inter,sans-serif] text-[14px] text-center">
+            No participants yet
+          </p>
+        </div>
+      ) : (
+        <AnimatePresence mode="popLayout">
+          {sorted.map(p => (
+            <ParticipantCard key={p.socketId} participant={p} />
+          ))}
+        </AnimatePresence>
+      )}
+    </div>
+  )
+}
