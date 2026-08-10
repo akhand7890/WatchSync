@@ -6,6 +6,8 @@ import { useRoomContext } from '../../context/RoomContext'
 import { useSocketContext } from '../../context/SocketContext'
 import { emitSendChat } from '../../services/socketService'
 
+import { soundFx } from '../../utils/soundEffects'
+
 import { ReactionButtons } from './FloatingReactions'
 
 /**
@@ -19,12 +21,16 @@ export default function Chat() {
   const { chatMessages, currentUser, room } = useRoomContext()
   const { socket } = useSocketContext()
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message & play chat pop sound
   useEffect(() => {
+    if (chatMessages.length > 0) {
+      soundFx.playChatPop()
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
 
   const sendMessage = () => {
+    soundFx.init()
     const text = input.trim()
     if (!text || !room?.roomId) return
     emitSendChat(socket, { roomId: room.roomId, text })
@@ -32,6 +38,7 @@ export default function Chat() {
   }
 
   const handleKeyDown = (e) => {
+    soundFx.init()
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()

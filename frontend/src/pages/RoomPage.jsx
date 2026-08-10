@@ -70,6 +70,7 @@ export default function RoomPage() {
     if (!socket || !roomId || !currentUser?.username) return
 
     socket.on(EVENTS.USER_JOINED, ({ participant }) => {
+      soundFx.playJoinChime()
       addParticipant(participant)
       addActivityLog({
         id: `join-${Date.now()}-${Math.random()}`,
@@ -84,6 +85,7 @@ export default function RoomPage() {
     })
 
     socket.on(EVENTS.USER_LEFT, ({ socketId, username }) => {
+      soundFx.playLeaveSound()
       removeParticipant(socketId)
       addActivityLog({
         id: `leave-${Date.now()}-${Math.random()}`,

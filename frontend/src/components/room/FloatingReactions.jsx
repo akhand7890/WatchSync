@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSocketContext } from '../../context/SocketContext'
 import { useRoomContext } from '../../context/RoomContext'
 import { EVENTS, emitSendReaction } from '../../services/socketService'
+import { soundFx } from '../../utils/soundEffects'
 
 const EMOJIS = ['❤️', '🔥', '👏', '🍿', '🚀', '😂']
 
@@ -15,6 +16,7 @@ export function ReactionButtons() {
   const roomId = room?.roomId
 
   const triggerReaction = (emoji) => {
+    soundFx.playReactionPop()
     // Emit over socket if connected
     if (socket && roomId) {
       emitSendReaction(socket, { roomId, emoji })
@@ -51,6 +53,7 @@ export function FloatingReactionsCanvas() {
   const [reactions, setReactions] = useState([])
 
   const addReaction = (payload) => {
+    soundFx.playReactionPop()
     setReactions((prev) => [...prev, payload])
     setTimeout(() => {
       setReactions((prev) => prev.filter((item) => item.id !== payload.id))

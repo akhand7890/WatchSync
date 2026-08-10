@@ -1,19 +1,22 @@
-import { Copy, Check, Wifi, WifiOff, Crown } from 'lucide-react'
+import { useState } from 'react'
+import { Copy, Check, Wifi, WifiOff, Crown, Volume2, VolumeX } from 'lucide-react'
 import useCopyToClipboard from '../../hooks/useCopyToClipboard'
 import { useSocketContext } from '../../context/SocketContext'
 import { useRoomContext } from '../../context/RoomContext'
 import { emitRequestControl } from '../../services/socketService'
 import ThemePicker from '../ui/ThemePicker'
+import { soundFx } from '../../utils/soundEffects'
 import { toast } from 'react-hot-toast'
 
 /**
  * RoomHeader — top bar inside the watch room.
- * Shows: WatchSync brand, room name, room code chip, copy button, connection status, theme picker.
+ * Shows: WatchSync brand, room name, room code chip, copy button, connection status, theme picker, sound FX toggle.
  */
 export default function RoomHeader() {
   const { room, canControl } = useRoomContext()
   const { socket, isConnected } = useSocketContext()
   const { copied, copy } = useCopyToClipboard()
+  const [isMuted, setIsMuted] = useState(soundFx.isMuted)
 
   const roomId = room?.roomId || ''
   const inviteUrl = `${window.location.origin}/room/${roomId}`
@@ -22,6 +25,12 @@ export default function RoomHeader() {
     if (!socket || !roomId) return
     emitRequestControl(socket, { roomId })
     toast.success('Permission request sent to host!', { icon: '👑' })
+  }
+
+  const handleToggleSfx = () => {
+    const muted = soundFx.toggleMute()
+    setIsMuted(muted)
+    toast(muted ? 'Sound Effects Muted 🔇' : 'Sound Effects Active 🔊', { duration: 1500 })
   }
 
   return (
@@ -61,7 +70,7 @@ export default function RoomHeader() {
         )}
       </div>
 
-      {/* Right: Connection indicator, Request Control & Theme Picker */}
+      {/* Right: Connection indicator, Request Control, SFX Toggle & Theme Picker */}
       <div className="flex items-center gap-3">
         {/* Non-hosts get Request Control button */}
         {!canControl && (
@@ -74,6 +83,19 @@ export default function RoomHeader() {
             <span>Request Control</span>
           </button>
         )}
+
+        {/* Sound Effects Toggle Button */}
+        <button
+          onClick={handleToggleSfx}
+          className={`p-2 rounded-full border transition-all duration-200 ${
+            isMuted
+              ? 'bg-[#131315]/80 border-red-500/30 text-red-400 hover:bg-red-500/10'
+              : 'bg-[#131315]/80 border-[#ff5451]/30 text-[#ffb3ad] hover:bg-[#ff5451]/15 shadow-[0_0_10px_rgba(255,84,81,0.2)]'
+          }`}
+          title={isMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
+        >
+          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
 
         <ThemePicker />
         <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12px] font-[Geist,sans-serif] font-medium ${
