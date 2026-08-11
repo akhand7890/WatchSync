@@ -124,3 +124,15 @@ export function emitRequestControl(socket, { roomId }) {
 export function emitGrantControl(socket, { roomId, targetSocketId }) {
   socket.emit('grant_control', { roomId, targetSocketId })
 }
+
+export function emitCreatePoll(socket, { roomId, question, options, creatorUsername }) {
+  socket.emit('create_poll', { roomId, question, options, creatorUsername })
+}
+
+export function emitVotePoll(socket, { roomId, optionId, username }) {
+  socket.emit('vote_poll', { roomId, optionId, username })
+}
+
+export function emitEndPoll(socket, { roomId }) {
+  socket.emit('end_poll', { roomId })
+}

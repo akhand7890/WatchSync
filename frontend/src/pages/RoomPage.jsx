@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import RoomHeader from '../components/room/RoomHeader'
 import VideoPlayer from '../components/room/VideoPlayer'
+import LivePollOverlay from '../components/room/LivePollOverlay'
 import QueueInput from '../components/room/QueueInput'
 import Sidebar from '../components/room/Sidebar'
 import ConnectionBanner from '../components/room/ConnectionBanner'
@@ -35,7 +36,7 @@ export default function RoomPage() {
     setParticipants, setVideoState, addParticipant,
     removeParticipant, updateParticipantRole,
     addChatMessage, addActivityLog, resetRoom, videoState, participants,
-    setQueue,
+    setQueue, setActivePoll,
   } = useRoomContext()
 
   const { socket, isConnected } = useSocketContext()
@@ -97,7 +98,7 @@ export default function RoomPage() {
       toast(`${username} left the room`, { icon: '👋' })
     })
 
-    socket.on(EVENTS.SYNC_STATE, ({ participants: updatedList, videoState: vs, room: r, queue, currentUserRole }) => {
+    socket.on(EVENTS.SYNC_STATE, ({ participants: updatedList, videoState: vs, room: r, queue, currentUserRole, activePoll: ap }) => {
       if (updatedList) {
         setParticipants(updatedList)
         if (currentUser) {
@@ -114,6 +115,12 @@ export default function RoomPage() {
       if (vs) setVideoState(vs)
       if (queue) setQueue(queue)
       if (r && !room) setRoom(r)
+      if (ap !== undefined) setActivePoll(ap)
+      else if (r?.activePoll) setActivePoll(r.activePoll)
+    })
+
+    socket.on('poll_updated', ({ activePoll }) => {
+      setActivePoll(activePoll)
     })
 
     socket.on(EVENTS.QUEUE_SYNC, ({ queue }) => {
@@ -238,6 +245,7 @@ export default function RoomPage() {
           <div className="relative z-10 w-full flex flex-col items-center gap-6 max-w-5xl mx-auto my-auto py-4">
             <QueueInput />
             <VideoPlayer />
+            <LivePollOverlay />
 
             {/* Video metadata & watching count row */}
             <div className="w-full flex justify-between items-start">

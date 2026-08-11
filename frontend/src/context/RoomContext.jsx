@@ -27,6 +27,7 @@ const initialState = {
   queue: [],
   chatMessages: [],
   activityLog: [],
+  activePoll: null,
 }
 
 function roomReducer(state, action) {
@@ -101,6 +102,12 @@ function roomReducer(state, action) {
         activityLog: action.payload || [],
       }
 
+    case 'SET_ACTIVE_POLL':
+      return {
+        ...state,
+        activePoll: action.payload,
+      }
+
     case 'RESET_ROOM':
       return initialState
 
@@ -127,6 +134,7 @@ export function RoomProvider({ children }) {
   const addChatMessage = useCallback((msg) => dispatch({ type: 'ADD_CHAT_MESSAGE', payload: msg }), [])
   const addActivityLog = useCallback((act) => dispatch({ type: 'ADD_ACTIVITY', payload: act }), [])
   const setActivityLog = useCallback((acts) => dispatch({ type: 'SET_ACTIVITIES', payload: acts }), [])
+  const setActivePoll = useCallback((poll) => dispatch({ type: 'SET_ACTIVE_POLL', payload: poll }), [])
   const resetRoom = useCallback(() => dispatch({ type: 'RESET_ROOM' }), [])
 
   return (
@@ -146,6 +154,7 @@ export function RoomProvider({ children }) {
       addChatMessage,
       addActivityLog,
       setActivityLog,
+      setActivePoll,
       resetRoom,
     }}>
       {children}

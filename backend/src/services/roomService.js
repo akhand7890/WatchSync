@@ -285,6 +285,75 @@ async function upvoteQueueItem(roomId, queueItemId, socketId) {
 }
 
 /**
+ * Create a new poll for a room.
+ */
+async function createPoll(roomId, { question, options, creatorUsername }) {
+  const room = await Room.findOne({ roomId })
+  if (!room) throw new Error('Room not found.')
+
+  const pollId = `poll-${Date.now()}`
+  const formattedOptions = options.map((opt, index) => ({
+    optionId: index + 1,
+    text: opt.trim(),
+    votes: [],
+  }))
+
+  room.activePoll = {
+    pollId,
+    question: question.trim(),
+    options: formattedOptions,
+    creatorUsername,
+    active: true,
+    createdAt: new Date(),
+  }
+
+  await room.save()
+  return room
+}
+
+/**
+ * Vote on an active poll.
+ */
+async function votePoll(roomId, { optionId, username }) {
+  const room = await Room.findOne({ roomId })
+  if (!room || !room.activePoll || !room.activePoll.active) {
+    throw new Error('No active poll found.')
+  }
+
+  const cleanUser = username ? username.trim().toLowerCase() : ''
+  if (!cleanUser) throw new Error('Username required to vote.')
+
+  // Remove existing vote by this username across all options
+  room.activePoll.options.forEach(opt => {
+    opt.votes = (opt.votes || []).filter(u => u.trim().toLowerCase() !== cleanUser)
+  })
+
+  // Add vote to target optionId
+  const targetOpt = room.activePoll.options.find(opt => Number(opt.optionId) === Number(optionId))
+  if (targetOpt) {
+    targetOpt.votes.push(username.trim())
+  }
+
+  await room.save()
+  return room
+}
+
+/**
+ * End an active poll.
+ */
+async function endPoll(roomId) {
+  const room = await Room.findOne({ roomId })
+  if (!room) throw new Error('Room not found.')
+
+  if (room.activePoll) {
+    room.activePoll.active = false
+  }
+
+  await room.save()
+  return room
+}
+
+/**
  * Get all active rooms.
  */
 async function getAllRooms() {
@@ -311,6 +380,9 @@ module.exports = {
   reorderQueue,
   upvoteQueueItem,
   popNextVideo,
+  createPoll,
+  votePoll,
+  endPoll,
   getAllRooms,
   deleteRoom,
 }

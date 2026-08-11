@@ -97,10 +97,12 @@ function registerRoomHandlers(socket, io) {
           roomId:       room.roomId,
           roomName:     room.roomName,
           hostSocketId: room.hostSocketId,
+          activePoll:   room.activePoll,
         },
         participants: room.participants,
         videoState:   room.videoState,
         queue:        room.queue,
+        activePoll:   room.activePoll,
         currentUserRole: participant?.role || 'participant',
       })
 
@@ -618,6 +620,40 @@ function registerRoomHandlers(socket, io) {
     } catch (err) {
       console.error('[Socket] queue_next error:', err.message)
       socket.emit(EVENTS.ERROR, { message: err.message })
+    }
+  })
+
+  /* -------------------------------------------------------
+   * Poll Events: create_poll, vote_poll, end_poll
+   * -------------------------------------------------------
+   */
+  socket.on('create_poll', async ({ roomId, question, options, creatorUsername }) => {
+    try {
+      if (!roomId || !question || !options || !Array.isArray(options)) return
+      const updatedRoom = await roomService.createPoll(roomId, { question, options, creatorUsername })
+      io.to(roomId).emit('poll_updated', { activePoll: updatedRoom.activePoll })
+    } catch (err) {
+      console.error('[Socket] create_poll error:', err.message)
+    }
+  })
+
+  socket.on('vote_poll', async ({ roomId, optionId, username }) => {
+    try {
+      if (!roomId || !optionId || !username) return
+      const updatedRoom = await roomService.votePoll(roomId, { optionId, username })
+      io.to(roomId).emit('poll_updated', { activePoll: updatedRoom.activePoll })
+    } catch (err) {
+      console.error('[Socket] vote_poll error:', err.message)
+    }
+  })
+
+  socket.on('end_poll', async ({ roomId }) => {
+    try {
+      if (!roomId) return
+      const updatedRoom = await roomService.endPoll(roomId)
+      io.to(roomId).emit('poll_updated', { activePoll: updatedRoom.activePoll })
+    } catch (err) {
+      console.error('[Socket] end_poll error:', err.message)
     }
   })
 }

@@ -38,6 +38,21 @@ const queueItemSchema = new mongoose.Schema({
   upvoteCount: { type: Number, default: 0 },
 })
 
+const pollOptionSchema = new mongoose.Schema({
+  optionId: { type: Number, required: true },
+  text:     { type: String, required: true },
+  votes:    [{ type: String }], // Array of usernames who voted for this option
+}, { _id: false })
+
+const pollSchema = new mongoose.Schema({
+  pollId:          { type: String, required: true },
+  question:        { type: String, required: true },
+  options:         [pollOptionSchema],
+  creatorUsername: { type: String, required: true },
+  active:          { type: Boolean, default: true },
+  createdAt:       { type: Date, default: Date.now },
+}, { _id: false })
+
 const roomSchema = new mongoose.Schema({
   roomId: {
     type: String,
@@ -68,6 +83,7 @@ const roomSchema = new mongoose.Schema({
   participants: [participantSchema],
   videoState:   { type: videoStateSchema, default: () => ({}) },
   queue:        [queueItemSchema],
+  activePoll:   { type: pollSchema, default: null },
 
   // TTL: auto-delete documents 24 hours after creation
   createdAt: { type: Date, default: Date.now, expires: 86400 },
