@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Copy, Check, Wifi, WifiOff, Crown, Volume2, VolumeX, BarChart3 } from 'lucide-react'
+import { Copy, Check, Wifi, WifiOff, Crown, Volume2, VolumeX, BarChart3, Zap } from 'lucide-react'
 import useCopyToClipboard from '../../hooks/useCopyToClipboard'
 import { useSocketContext } from '../../context/SocketContext'
 import { useRoomContext } from '../../context/RoomContext'
 import { emitRequestControl } from '../../services/socketService'
 import ThemePicker from '../ui/ThemePicker'
 import CreatePollModal from '../modals/CreatePollModal'
+import NetworkStatsModal from '../modals/NetworkStatsModal'
 import { soundFx } from '../../utils/soundEffects'
 import { toast } from 'react-hot-toast'
 
@@ -15,10 +16,11 @@ import { toast } from 'react-hot-toast'
  */
 export default function RoomHeader() {
   const { room, canControl } = useRoomContext()
-  const { socket, isConnected } = useSocketContext()
+  const { socket, isConnected, latency } = useSocketContext()
   const { copied, copy } = useCopyToClipboard()
   const [isMuted, setIsMuted] = useState(soundFx.isMuted)
   const [showPollModal, setShowPollModal] = useState(false)
+  const [showStatsModal, setShowStatsModal] = useState(false)
 
   const roomId = room?.roomId || ''
   const inviteUrl = `${window.location.origin}/room/${roomId}`
@@ -73,7 +75,7 @@ export default function RoomHeader() {
           )}
         </div>
 
-        {/* Right: Connection indicator, Request Control, Polls, SFX Toggle & Theme Picker */}
+        {/* Right: Connection indicator, Request Control, Polls, Latency Ping, SFX Toggle & Theme Picker */}
         <div className="flex items-center gap-3">
           {/* Controllers get Create Poll button */}
           {canControl && (
@@ -98,6 +100,16 @@ export default function RoomHeader() {
               <span>Request Control</span>
             </button>
           )}
+
+          {/* Real-time Network Ping Latency Chip */}
+          <button
+            onClick={() => setShowStatsModal(true)}
+            className="px-2.5 py-1.5 bg-[#131315]/80 hover:bg-[#201f22] border border-[#ff5451]/30 text-[#ff5451] hover:text-[#ffb3ad] rounded-full font-[Geist,sans-serif] text-[12px] font-bold transition-all shadow-sm flex items-center gap-1"
+            title="Open Network Diagnostics & WebSockets Telemetry"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>{latency}ms</span>
+          </button>
 
           {/* Sound Effects Toggle Button */}
           <button
@@ -128,6 +140,9 @@ export default function RoomHeader() {
 
       {/* Create Poll Modal */}
       <CreatePollModal isOpen={showPollModal} onClose={() => setShowPollModal(false)} />
+
+      {/* Network Stats Diagnostics Modal */}
+      <NetworkStatsModal isOpen={showStatsModal} onClose={() => setShowStatsModal(false)} />
     </>
   )
 }
