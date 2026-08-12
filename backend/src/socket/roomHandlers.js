@@ -58,6 +58,14 @@ function registerRoomHandlers(socket, io) {
   })
 
   /* -------------------------------------------------------
+   * ping_check — real-time latency ping handler
+   * -------------------------------------------------------
+   */
+  socket.on('ping_check', (cb) => {
+    if (typeof cb === 'function') cb()
+  })
+
+  /* -------------------------------------------------------
    * join_room
    * -------------------------------------------------------
    * 1. Add participant to DB

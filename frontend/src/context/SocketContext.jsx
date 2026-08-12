@@ -22,9 +22,11 @@ export function SocketProvider({ children }) {
   const socketRef = useRef(null)
   const [isConnected, setIsConnected] = useState(false)
   const [connectionError, setConnectionError] = useState(false)
+  const [latency, setLatency] = useState(12)
+  const [transport, setTransport] = useState('WebSocket')
 
   useEffect(() => {
-    // Create the socket — autoConnect: false so we control when it connects
+    // Create the socket — autoConnect: true
     socketRef.current = io(SOCKET_URL, {
       autoConnect: true,
       reconnection: true,
@@ -39,6 +41,9 @@ export function SocketProvider({ children }) {
     socket.on('connect', () => {
       setIsConnected(true)
       setConnectionError(false)
+      if (socket.io?.engine?.transport?.name) {
+        setTransport(socket.io.engine.transport.name.toUpperCase())
+      }
     })
 
     socket.on('disconnect', () => {
@@ -60,8 +65,31 @@ export function SocketProvider({ children }) {
     }
   }, [])
 
+  // Periodic latency measurement
+  useEffect(() => {
+    if (!isConnected || !socketRef.current) return
+
+    const measurePing = () => {
+      const start = Date.now()
+      socketRef.current.emit('ping_check', () => {
+        const ms = Date.now() - start
+        setLatency(ms)
+      })
+    }
+
+    measurePing()
+    const interval = setInterval(measurePing, 3000)
+    return () => clearInterval(interval)
+  }, [isConnected])
+
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, isConnected, connectionError }}>
+    <SocketContext.Provider value={{
+      socket: socketRef.current,
+      isConnected,
+      connectionError,
+      latency,
+      transport,
+    }}>
       {children}
     </SocketContext.Provider>
   )
