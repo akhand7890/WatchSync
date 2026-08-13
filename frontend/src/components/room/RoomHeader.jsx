@@ -39,7 +39,7 @@ export default function RoomHeader() {
 
   return (
     <>
-      <header className="bg-[#131315]/60 backdrop-blur-md shadow-sm fixed top-0 w-full z-50 flex justify-between items-center px-6 py-4 border-b border-[#5b403e]/20">
+      <header className="bg-[#131315]/80 backdrop-blur-md shadow-sm fixed top-0 w-full z-50 flex justify-between items-center px-3 md:px-6 py-3 border-b border-[#5b403e]/20">
         {/* Left: Brand + Room Info */}
         <div className="flex items-center gap-3">
           <img src="/favicon.svg" alt="WatchSync Logo" className="w-7 h-7 drop-shadow-[0_0_8px_rgba(255,84,81,0.5)]" />

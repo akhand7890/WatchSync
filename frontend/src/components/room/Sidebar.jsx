@@ -48,7 +48,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="hidden md:flex flex-col w-[320px] lg:w-[380px] h-full bg-[#201f22]/80 backdrop-blur-xl border-l border-[#5b403e]/20 shadow-xl z-40 relative flex-shrink-0">
+    <aside className="flex flex-col w-full md:w-[320px] lg:w-[380px] h-[520px] md:h-full bg-[#201f22]/80 backdrop-blur-xl border-t md:border-t-0 md:border-l border-[#5b403e]/20 shadow-xl z-40 relative flex-shrink-0">
       {/* Header */}
       <div className="p-6 border-b border-[#5b403e]/10 flex items-center gap-4">
         {host && <Avatar username={host.username} size="lg" bordered />}

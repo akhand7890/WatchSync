@@ -270,14 +270,14 @@ export default function RoomPage() {
   }, [socket, roomId])
 
   return (
-    <div className="h-screen w-full overflow-hidden flex flex-col bg-[#131315] text-[#e5e1e4]">
+    <div className="min-h-screen md:h-screen w-full overflow-y-auto md:overflow-hidden flex flex-col bg-[#131315] text-[#e5e1e4]">
       {/* Fixed top header */}
       <RoomHeader />
 
       {/* Main content area — below fixed header */}
-      <main className="flex-1 flex pt-[72px] h-full overflow-hidden">
+      <main className="flex-1 flex flex-col md:flex-row pt-[64px] md:pt-[72px] h-full overflow-y-auto md:overflow-hidden">
         {/* Video Canvas — left 70% */}
-        <section className="flex-1 relative flex flex-col items-center p-4 lg:p-6 bg-[#0e0e10] overflow-y-auto scrollbar-thin">
+        <section className="flex-1 relative flex flex-col items-center p-3 md:p-6 bg-[#0e0e10] overflow-y-auto scrollbar-thin">
           {/* Ambient background glow */}
           <div className="absolute inset-0 z-0 flex items-center justify-center opacity-20 pointer-events-none">
             <div className="w-3/4 h-3/4 bg-[#ffb3ad]/10 rounded-full blur-[160px]" />
