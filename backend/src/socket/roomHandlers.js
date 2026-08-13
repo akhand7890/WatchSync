@@ -1,6 +1,8 @@
 const mongoose = require('mongoose')
 const roomService = require('../services/roomService')
 
+const disconnectTimers = new Map()
+
 /**
  * Socket event constants — single source of truth for event names.
  * Must match the frontend's EVENTS object in socketService.js.
@@ -77,9 +79,18 @@ function registerRoomHandlers(socket, io) {
     try {
       if (!roomId || !username) return
 
+      const cleanUser = username.trim().slice(0, 24)
+      const timerKey = `${roomId.toUpperCase()}:${cleanUser.toLowerCase()}`
+
+      // Cancel any pending disconnect cleanup timer for this user/room
+      if (disconnectTimers.has(timerKey)) {
+        clearTimeout(disconnectTimers.get(timerKey))
+        disconnectTimers.delete(timerKey)
+      }
+
       const room = await roomService.addParticipant(roomId, {
         socketId: socket.id,
-        username: username.trim().slice(0, 24),
+        username: cleanUser,
         password: password ? password.trim() : null,
       })
 
@@ -89,14 +100,14 @@ function registerRoomHandlers(socket, io) {
       }
 
       // Track which room this socket is in
-      socket.roomId = roomId
-      socket.username = username
-      socket.join(roomId)
+      socket.roomId = room.roomId
+      socket.username = cleanUser
+      socket.join(room.roomId)
 
       const participant = room.findParticipant(socket.id)
 
       // Notify others
-      socket.to(roomId).emit(EVENTS.USER_JOINED, { participant })
+      socket.to(room.roomId).emit(EVENTS.USER_JOINED, { participant })
       io.emit('rooms_updated')
 
       // Send full state to the new joiner
@@ -114,7 +125,7 @@ function registerRoomHandlers(socket, io) {
         currentUserRole: participant?.role || 'participant',
       })
 
-      console.log(`[Socket] ${username} (${socket.id}) joined room ${roomId}`)
+      console.log(`[Socket] ${cleanUser} (${socket.id}) joined room ${room.roomId}`)
     } catch (err) {
       console.error('[Socket] join_room error:', err.message)
       socket.emit(EVENTS.ERROR, { message: err.message })
@@ -126,17 +137,38 @@ function registerRoomHandlers(socket, io) {
    * -------------------------------------------------------
    */
   socket.on(EVENTS.LEAVE_ROOM, async ({ roomId }) => {
+    const cleanUser = socket.username ? socket.username.trim().toLowerCase() : ''
+    const timerKey = `${roomId?.toUpperCase()}:${cleanUser}`
+    if (disconnectTimers.has(timerKey)) {
+      clearTimeout(disconnectTimers.get(timerKey))
+      disconnectTimers.delete(timerKey)
+    }
     await handleLeave(socket, io, roomId)
   })
 
   /* -------------------------------------------------------
-   * disconnect (tab close / network drop)
+   * disconnect (tab close / F5 refresh / network drop)
+   * 10-second grace period prevents instant room deletion on F5
    * -------------------------------------------------------
    */
   socket.on('disconnect', async () => {
-    if (socket.roomId) {
-      await handleLeave(socket, io, socket.roomId)
+    if (!socket.roomId) return
+
+    const roomId = socket.roomId
+    const cleanUser = socket.username ? socket.username.trim().toLowerCase() : socket.id
+    const timerKey = `${roomId.toUpperCase()}:${cleanUser}`
+
+    if (disconnectTimers.has(timerKey)) {
+      clearTimeout(disconnectTimers.get(timerKey))
     }
+
+    const timer = setTimeout(async () => {
+      disconnectTimers.delete(timerKey)
+      console.log(`[Socket] Disconnect grace period expired for ${cleanUser} in ${roomId}`)
+      await handleLeave(socket, io, roomId)
+    }, 10000) // 10s grace period for F5 page refresh
+
+    disconnectTimers.set(timerKey, timer)
   })
 
   /* -------------------------------------------------------
@@ -560,6 +592,110 @@ function registerRoomHandlers(socket, io) {
       io.to(roomId).emit(EVENTS.SYNC_STATE, { participants: updatedRoom.participants })
     } catch (err) {
       console.error('[Socket] grant_control error:', err.message)
+    }
+  })
+
+  /* -------------------------------------------------------
+   * assign_role — host updates participant role (moderator, participant, viewer)
+   * -------------------------------------------------------
+   */
+  socket.on(EVENTS.ASSIGN_ROLE, async ({ roomId, targetSocketId, role }) => {
+    try {
+      if (!roomId || !targetSocketId || !role) return
+      const room = await roomService.findRoom(roomId)
+      if (!room || !room.hasRole(socket.id, 'host')) {
+        socket.emit(EVENTS.ERROR, { message: 'Only the host can assign roles.' })
+        return
+      }
+
+      const { room: updatedRoom, participant } = await roomService.updateParticipantRole(roomId, targetSocketId, role)
+
+      io.to(roomId).emit(EVENTS.ROLE_UPDATED, {
+        socketId: targetSocketId,
+        role: role,
+        username: participant?.username || 'User',
+      })
+      io.to(roomId).emit(EVENTS.SYNC_STATE, {
+        participants: updatedRoom.participants,
+        room: {
+          roomId: updatedRoom.roomId,
+          roomName: updatedRoom.roomName,
+          hostSocketId: updatedRoom.hostSocketId,
+          activePoll: updatedRoom.activePoll,
+        }
+      })
+    } catch (err) {
+      console.error('[Socket] assign_role error:', err.message)
+      socket.emit(EVENTS.ERROR, { message: err.message })
+    }
+  })
+
+  /* -------------------------------------------------------
+   * transfer_host — host transfers room ownership to participant
+   * -------------------------------------------------------
+   */
+  socket.on(EVENTS.TRANSFER_HOST, async ({ roomId, targetSocketId }) => {
+    try {
+      if (!roomId || !targetSocketId) return
+      const room = await roomService.findRoom(roomId)
+      if (!room || !room.hasRole(socket.id, 'host')) {
+        socket.emit(EVENTS.ERROR, { message: 'Only the host can transfer ownership.' })
+        return
+      }
+
+      const { room: updatedRoom, newHost } = await roomService.transferHost(roomId, targetSocketId)
+
+      io.to(roomId).emit(EVENTS.ROLE_UPDATED, {
+        socketId: targetSocketId,
+        role: 'host',
+        username: newHost?.username || 'User',
+      })
+      io.to(roomId).emit(EVENTS.SYNC_STATE, {
+        participants: updatedRoom.participants,
+        room: {
+          roomId: updatedRoom.roomId,
+          roomName: updatedRoom.roomName,
+          hostSocketId: updatedRoom.hostSocketId,
+          activePoll: updatedRoom.activePoll,
+        }
+      })
+    } catch (err) {
+      console.error('[Socket] transfer_host error:', err.message)
+      socket.emit(EVENTS.ERROR, { message: err.message })
+    }
+  })
+
+  /* -------------------------------------------------------
+   * remove_participant — host kicks participant from room
+   * -------------------------------------------------------
+   */
+  socket.on(EVENTS.REMOVE_PARTICIPANT, async ({ roomId, targetSocketId }) => {
+    try {
+      if (!roomId || !targetSocketId) return
+      const room = await roomService.findRoom(roomId)
+      if (!room || !room.hasRole(socket.id, 'host')) {
+        socket.emit(EVENTS.ERROR, { message: 'Only the host can remove participants.' })
+        return
+      }
+
+      // Notify target socket
+      io.to(targetSocketId).emit(EVENTS.KICKED, { message: 'You were removed from the room by the host.' })
+
+      // Remove from room
+      const result = await roomService.removeParticipant(roomId, targetSocketId)
+      if (!result) return
+
+      io.to(roomId).emit(EVENTS.USER_LEFT, {
+        socketId: targetSocketId,
+        username: result.leavingParticipant?.username || 'Someone',
+      })
+      io.to(roomId).emit(EVENTS.SYNC_STATE, {
+        participants: result.room ? result.room.participants : [],
+      })
+      io.emit('rooms_updated')
+    } catch (err) {
+      console.error('[Socket] remove_participant error:', err.message)
+      socket.emit(EVENTS.ERROR, { message: err.message })
     }
   })
 

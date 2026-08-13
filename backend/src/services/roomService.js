@@ -54,12 +54,12 @@ async function addParticipant(roomId, { socketId, username, password, role = 'pa
 
   const trimmedUsername = username.trim()
 
-  // Check if room is private and requires password (except for first joining host)
+  // Check if room is private and requires password (except for reconnecting existing participants)
   if (room.isPrivate && room.password && room.participants.length > 0) {
-    const isHostReconnecting = room.participants.some(
-      p => p.username.toLowerCase() === trimmedUsername.toLowerCase() && p.role === 'host'
+    const isReconnecting = room.participants.some(
+      p => p.username.toLowerCase() === trimmedUsername.toLowerCase()
     )
-    if (!isHostReconnecting && (!password || password.trim() !== room.password)) {
+    if (!isReconnecting && (!password || password.trim() !== room.password)) {
       throw new Error('Incorrect room password/PIN.')
     }
   }
@@ -367,6 +367,31 @@ async function deleteRoom(roomId) {
   return await Room.deleteOne({ roomId })
 }
 
+/**
+ * Transfer host ownership to target participant.
+ */
+async function transferHost(roomId, targetSocketId) {
+  const room = await Room.findOne({ roomId })
+  if (!room) throw new Error('Room not found.')
+
+  const target = room.participants.find(p => p.socketId === targetSocketId)
+  if (!target) throw new Error('Target participant not found.')
+
+  // Demote previous host to moderator
+  room.participants.forEach(p => {
+    if (p.role === 'host') {
+      p.role = 'moderator'
+    }
+  })
+
+  // Promote target to host
+  target.role = 'host'
+  room.hostSocketId = targetSocketId
+
+  await room.save()
+  return { room, newHost: target }
+}
+
 module.exports = {
   createRoom,
   findRoom,
@@ -374,6 +399,7 @@ module.exports = {
   removeParticipant,
   updateVideoState,
   updateParticipantRole,
+  transferHost,
   addToQueue,
   removeFromQueue,
   clearQueue,
