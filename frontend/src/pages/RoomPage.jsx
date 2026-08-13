@@ -192,6 +192,17 @@ export default function RoomPage() {
       setVideoState({ currentTime })
     })
 
+    socket.on(EVENTS.PLAYBACK_RATE_CHANGED, ({ playbackRate }) => {
+      setVideoState({ playbackRate })
+      addActivityLog({
+        id: `rate-${Date.now()}`,
+        type: 'speed',
+        username: 'Playback',
+        text: `Playback speed set to ${playbackRate}x`,
+        timestamp: new Date(),
+      })
+    })
+
     socket.on(EVENTS.CHANGE_VIDEO, ({ videoId, title }) => {
       setVideoState({ videoId, isPlaying: false, currentTime: 0 })
       addActivityLog({

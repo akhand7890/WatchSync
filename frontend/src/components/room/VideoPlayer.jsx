@@ -234,7 +234,12 @@ export default function VideoPlayer() {
     }
   }, [videoState.currentTime])
 
-  // Sync playback rate from socket
+  // Sync playback rate from socket & state
+  useEffect(() => {
+    if (!isReadyRef.current || !playerRef.current || !videoState.playbackRate) return
+    playerRef.current.setPlaybackRate?.(videoState.playbackRate)
+  }, [videoState.playbackRate])
+
   useEffect(() => {
     if (!socket) return
 
