@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast'
 
 export default function QueueInput() {
   const [url, setUrl] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const { canControl, room, queue, videoState } = useRoomContext()
@@ -25,7 +26,10 @@ export default function QueueInput() {
 
     const videoId = extractVideoId(trimmed)
     if (!videoId) {
-      toast.error('Invalid YouTube link. Please check the URL.')
+      // If user typed keywords instead of a direct link, open search modal with keywords pre-filled!
+      setSearchQuery(trimmed)
+      setIsSearchOpen(true)
+      setUrl('')
       return
     }
 
@@ -66,6 +70,11 @@ export default function QueueInput() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const openSearch = (queryStr = '') => {
+    setSearchQuery(queryStr)
+    setIsSearchOpen(true)
   }
 
   const nextVideo = queue && queue[0]
@@ -112,8 +121,8 @@ export default function QueueInput() {
       <div className="flex items-center gap-3 w-full md:w-auto justify-end">
         {/* Search Button */}
         <button
-          onClick={() => setIsSearchOpen(true)}
-          className="px-3 py-2 bg-[#ff5451]/10 hover:bg-[#ff5451]/20 border border-[#ff5451]/30 text-[#ffb3ad] rounded-lg font-[Geist,sans-serif] font-semibold text-[13px] transition-all flex items-center gap-1.5 whitespace-nowrap"
+          onClick={() => openSearch('')}
+          className="px-3 py-2 bg-[#ff5451]/10 hover:bg-[#ff5451]/20 border border-[#ff5451]/30 text-[#ffb3ad] rounded-lg font-[Geist,sans-serif] font-semibold text-[13px] transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
           title="Search YouTube Videos In-App"
         >
           <Search className="w-4 h-4" />
@@ -121,20 +130,21 @@ export default function QueueInput() {
         </button>
 
         {canControl ? (
-          <div className="flex items-center bg-[#0d0d0f] border border-[#5b403e]/40 rounded-lg p-1 w-full md:w-[320px] focus-within:border-[#ff5451]/50 transition-colors">
+          <div className="flex items-center bg-[#0d0d0f] border border-[#5b403e]/40 rounded-lg p-1 w-full md:w-[340px] focus-within:border-[#ff5451]/50 transition-colors">
             <input
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddToQueue()}
-              placeholder="Paste YouTube link..."
+              placeholder="Search title or paste YouTube link..."
               disabled={isLoading}
-              className="bg-transparent border-none text-[#e5e1e4] font-[Inter,sans-serif] text-[13px] focus:outline-none px-3 py-1.5 flex-1 placeholder:text-[#e4beba]/30 disabled:opacity-50"
+              className="bg-transparent border-none text-[#e5e1e4] font-[Inter,sans-serif] text-[13px] focus:outline-none px-3 py-1.5 flex-1 placeholder:text-[#e4beba]/40 disabled:opacity-50"
             />
             <button
               onClick={handleAddToQueue}
               disabled={isLoading || !url.trim()}
-              className="bg-[#ff5451] hover:bg-[#ffb3ad] hover:text-[#68000a] text-white disabled:opacity-50 disabled:hover:bg-[#ff5451] disabled:hover:text-white rounded-md p-1.5 transition-all duration-200"
+              className="bg-[#ff5451] hover:bg-[#ffb3ad] hover:text-[#68000a] text-white disabled:opacity-50 disabled:hover:bg-[#ff5451] disabled:hover:text-white rounded-md p-1.5 transition-all duration-200 cursor-pointer"
+              title="Add link or search title"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -153,6 +163,7 @@ export default function QueueInput() {
       <YouTubeSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
+        initialQuery={searchQuery}
       />
     </div>
   )

@@ -187,4 +187,87 @@ async function deleteRoom(req, res, next) {
   }
 }
 
-module.exports = { createRoom, joinRoom, getRoom, getRooms, deleteRoom }
+/**
+ * GET /api/youtube/search?q=query
+ * Scrapes YouTube search results directly on backend with zero CORS restrictions.
+ */
+async function searchYouTube(req, res, next) {
+  try {
+    const query = req.query.q
+    if (!query || !query.trim()) {
+      return res.status(400).json({ success: false, message: 'Search query is required.' })
+    }
+
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query.trim())}`
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      }
+    })
+    const html = await response.text()
+
+    const match = html.match(/ytInitialData\s*=\s*({.+?});\s*<\/script>/)
+    let results = []
+
+    if (match && match[1]) {
+      try {
+        const data = JSON.parse(match[1])
+        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || []
+
+        for (const item of contents) {
+          const video = item.videoRenderer
+          if (video && video.videoId) {
+            results.push({
+              videoId: video.videoId,
+              title: video.title?.runs?.[0]?.text || 'YouTube Video',
+              uploaderName: video.ownerText?.runs?.[0]?.text || video.shortBylineText?.runs?.[0]?.text || 'YouTube Channel',
+              thumbnail: video.thumbnail?.thumbnails?.slice(-1)[0]?.url || `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`,
+              duration: video.lengthText?.simpleText || '',
+            })
+          }
+        }
+      } catch (err) {
+        console.error('[YouTube Search] JSON parse error:', err.message)
+      }
+    }
+
+    // Fallback if scraping yielded no results
+    if (results.length === 0) {
+      const instances = [
+        `https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
+        `https://vid.puffyan.us/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
+        `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=all`,
+      ]
+      for (const endpoint of instances) {
+        try {
+          const fallbackRes = await fetch(endpoint)
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json()
+            const items = Array.isArray(fallbackData) ? fallbackData : (fallbackData.items || [])
+            results = items.map(item => {
+              const videoId = item.videoId || (item.url ? item.url.replace('/watch?v=', '') : item.id)
+              return {
+                videoId,
+                title: item.title,
+                uploaderName: item.author || item.uploaderName || 'YouTube',
+                thumbnail: item.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+                duration: item.lengthSeconds || item.duration || 0,
+              }
+            }).filter(item => item.videoId)
+            if (results.length > 0) break
+          }
+        } catch {}
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      items: results.slice(0, 20),
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+module.exports = { createRoom, joinRoom, getRoom, getRooms, deleteRoom, searchYouTube }

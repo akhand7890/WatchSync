@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Search, Plus, Play, Loader2 } from 'lucide-react'
@@ -12,33 +12,69 @@ import { toast } from 'react-hot-toast'
  * Uses React createPortal to render directly into document.body,
  * avoiding parent overflow/transform clipping issues.
  */
-export default function YouTubeSearchModal({ isOpen, onClose }) {
-  const [query, setQuery] = useState('')
+export default function YouTubeSearchModal({ isOpen, onClose, initialQuery = '' }) {
+  const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const { room, canControl } = useRoomContext()
   const { socket } = useSocketContext()
 
-  const handleSearch = async (e) => {
-    e?.preventDefault()
-    if (!query.trim()) return
+  useEffect(() => {
+    if (isOpen && initialQuery) {
+      setQuery(initialQuery)
+      executeSearch(initialQuery)
+    }
+  }, [isOpen, initialQuery])
+
+  const executeSearch = async (searchQuery) => {
+    const q = (searchQuery || query).trim()
+    if (!q) return
 
     setIsSearching(true)
     try {
-      // Use Piped / Invidious CORS-friendly YouTube Search API
-      const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=all`)
-      const data = await res.json()
-      
-      const items = (data.items || []).filter(item => item.type === 'stream').slice(0, 10).map(item => {
-        const videoId = item.url ? item.url.replace('/watch?v=', '') : item.id
-        return {
-          videoId,
-          title: item.title,
-          uploaderName: item.uploaderName || item.author || 'YouTube',
-          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-          duration: item.duration || 0,
+      let items = []
+
+      // Primary Strategy: WatchSync Backend Proxy Endpoint
+      try {
+        const res = await fetch(`/api/rooms/search?q=${encodeURIComponent(q)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.items && data.items.length > 0) {
+            items = data.items
+          }
         }
-      })
+      } catch (err) {
+        console.warn('Backend search API failed, attempting direct mirrors...', err)
+      }
+
+      // Secondary Fallback: Direct Piped / Invidious Mirrors
+      if (items.length === 0) {
+        const mirrors = [
+          `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}&filter=all`,
+          `https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(q)}&type=video`,
+        ]
+        for (const mirror of mirrors) {
+          try {
+            const mRes = await fetch(mirror)
+            if (mRes.ok) {
+              const mData = await mRes.json()
+              const rawItems = Array.isArray(mData) ? mData : (mData.items || [])
+              items = rawItems.slice(0, 15).map(item => {
+                const videoId = item.videoId || (item.url ? item.url.replace('/watch?v=', '') : item.id)
+                return {
+                  videoId,
+                  title: item.title,
+                  uploaderName: item.author || item.uploaderName || 'YouTube',
+                  thumbnail: item.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+                  duration: item.duration || item.lengthSeconds || 0,
+                }
+              }).filter(i => i.videoId)
+
+              if (items.length > 0) break
+            }
+          } catch {}
+        }
+      }
 
       if (items.length > 0) {
         setResults(items)
@@ -46,30 +82,15 @@ export default function YouTubeSearchModal({ isOpen, onClose }) {
         throw new Error('No items found')
       }
     } catch {
-      // Fallback search mock if API rate limited
-      setResults([
-        {
-          videoId: 'jfKfPfyJRdk',
-          title: 'Lofi Hip Hop Radio - Beats to Relax/Study to',
-          uploaderName: 'Lofi Girl',
-          thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/hqdefault.jpg',
-        },
-        {
-          videoId: '5qap5aO4i9A',
-          title: 'Lofi Hip Hop Radio - Beats to Sleep/Chill to',
-          uploaderName: 'Lofi Girl',
-          thumbnail: 'https://img.youtube.com/vi/5qap5aO4i9A/hqdefault.jpg',
-        },
-        {
-          videoId: 'dQw4w9WgXcQ',
-          title: 'Rick Astley - Never Gonna Give You Up (Official Music Video)',
-          uploaderName: 'Rick Astley',
-          thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
-        },
-      ])
+      toast.error('Search temporarily unavailable. Please try again.')
     } finally {
       setIsSearching(false)
     }
+  }
+
+  const handleSearch = (e) => {
+    e?.preventDefault()
+    executeSearch(query)
   }
 
   const handleAddToQueue = (item) => {
