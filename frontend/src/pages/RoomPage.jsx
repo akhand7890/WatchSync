@@ -149,16 +149,26 @@ export default function RoomPage() {
 
     socket.on(EVENTS.ROLE_UPDATED, ({ socketId, role, username }) => {
       updateParticipantRole({ socketId, role, username })
+      const roleLabel = { host: 'Host 👑', moderator: 'Moderator 🛡️', participant: 'Participant 👤', viewer: 'Viewer 👁️' }[role] || role
+      addActivityLog({
+        id: `role-${Date.now()}`,
+        type: 'role',
+        username: username || 'User',
+        text: `Role updated to ${roleLabel}`,
+        timestamp: new Date(),
+      })
+
       if (socketId === socket.id || (currentUser?.username && currentUser.username.toLowerCase() === username?.toLowerCase())) {
         soundFx.playGrantFanfare()
         toast.success(`Your role was updated to ${role.toUpperCase()}!`, { icon: '👑' })
       } else {
-        toast(`${username} is now a ${role.toUpperCase()}`, { icon: '🛡️' })
+        toast(`${username || 'User'} is now a ${role.toUpperCase()}`, { icon: '🛡️' })
       }
     })
 
     socket.on(EVENTS.KICKED, ({ message }) => {
       toast.error(message || 'You were removed from the room by the host.')
+      resetRoom()
       navigate('/')
     })
 
@@ -213,25 +223,6 @@ export default function RoomPage() {
         timestamp: new Date(),
       })
       toast(`Now playing: ${title || 'new video'}`, { icon: '🎬' })
-    })
-
-    socket.on(EVENTS.ROLE_UPDATED, ({ socketId, role, username }) => {
-      updateParticipantRole({ socketId, role })
-      const roleLabel = { host: 'Host', moderator: 'Moderator', participant: 'Participant', viewer: 'Viewer' }[role] || role
-      addActivityLog({
-        id: `role-${Date.now()}`,
-        type: 'role',
-        username,
-        text: `Role updated to ${roleLabel}`,
-        timestamp: new Date(),
-      })
-      toast(`${username} is now ${roleLabel}`, { icon: '🔄' })
-    })
-
-    socket.on(EVENTS.KICKED, () => {
-      toast.error('You were removed from the room.')
-      resetRoom()
-      navigate('/')
     })
 
     socket.on(EVENTS.CHAT_MESSAGE, (message) => {
