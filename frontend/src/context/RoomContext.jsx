@@ -15,9 +15,20 @@ import { createContext, useContext, useReducer, useCallback } from 'react'
 
 const RoomContext = createContext(null)
 
+const getInitialUser = () => {
+  try {
+    const s = sessionStorage.getItem('watchsync_user')
+    if (s) return JSON.parse(s)
+    const l = localStorage.getItem('watchsync_user')
+    if (l) return JSON.parse(l)
+  } catch {
+    return null
+  }
+}
+
 const initialState = {
   room: null,
-  currentUser: null,
+  currentUser: getInitialUser(),
   participants: [],
   videoState: {
     videoId: null,
@@ -38,8 +49,21 @@ function roomReducer(state, action) {
     case 'SET_QUEUE':
       return { ...state, queue: action.payload }
 
-    case 'SET_CURRENT_USER':
-      return { ...state, currentUser: action.payload }
+    case 'SET_CURRENT_USER': {
+      const newUser = typeof action.payload === 'function' ? action.payload(state.currentUser) : action.payload
+      if (newUser) {
+        try {
+          sessionStorage.setItem('watchsync_user', JSON.stringify(newUser))
+          localStorage.setItem('watchsync_user', JSON.stringify(newUser))
+        } catch {}
+      } else {
+        try {
+          sessionStorage.removeItem('watchsync_user')
+          localStorage.removeItem('watchsync_user')
+        } catch {}
+      }
+      return { ...state, currentUser: newUser }
+    }
 
     case 'SET_PARTICIPANTS':
       return { ...state, participants: action.payload }
@@ -67,19 +91,31 @@ function roomReducer(state, action) {
         participants: state.participants.filter(p => p.socketId !== action.payload),
       }
 
-    case 'UPDATE_PARTICIPANT_ROLE':
+    case 'UPDATE_PARTICIPANT_ROLE': {
+      const isTargetMe = state.currentUser?.socketId === action.payload.socketId ||
+        state.currentUser?.username.toLowerCase() === action.payload.username?.toLowerCase()
+
+      const updatedUser = isTargetMe
+        ? { ...state.currentUser, role: action.payload.role }
+        : state.currentUser
+
+      if (updatedUser && isTargetMe) {
+        try {
+          sessionStorage.setItem('watchsync_user', JSON.stringify(updatedUser))
+          localStorage.setItem('watchsync_user', JSON.stringify(updatedUser))
+        } catch {}
+      }
+
       return {
         ...state,
         participants: state.participants.map(p =>
-          p.socketId === action.payload.socketId
+          (p.socketId === action.payload.socketId || p.username.toLowerCase() === action.payload.username?.toLowerCase())
             ? { ...p, role: action.payload.role }
             : p
         ),
-        currentUser:
-          state.currentUser?.socketId === action.payload.socketId
-            ? { ...state.currentUser, role: action.payload.role }
-            : state.currentUser,
+        currentUser: updatedUser,
       }
+    }
 
     case 'SET_VIDEO_STATE':
       return { ...state, videoState: { ...state.videoState, ...action.payload } }

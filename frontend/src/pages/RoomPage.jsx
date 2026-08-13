@@ -12,6 +12,7 @@ import { useRoomContext } from '../context/RoomContext'
 import { useSocketContext } from '../context/SocketContext'
 import { EVENTS } from '../services/socketService'
 import { getRoom } from '../services/api'
+import { soundFx } from '../utils/soundEffects'
 
 /**
  * RoomPage — main watch room layout.
@@ -59,12 +60,35 @@ export default function RoomPage() {
     validate()
   }, [roomId]) // Only run on mount / roomId change
 
-  // Redirect to landing page to choose nickname if entering directly without currentUser
+  // Prevent redirect if user session exists in memory or browser storage
   useEffect(() => {
-    if (!currentUser) {
+    const hasStoredUser = Boolean(
+      sessionStorage.getItem('watchsync_user') || localStorage.getItem('watchsync_user')
+    )
+
+    if (!currentUser && !hasStoredUser) {
       navigate('/', { state: { joinRoomId: roomId } })
     }
   }, [currentUser, roomId, navigate])
+
+  // Emit join_room on mount or socket reconnection/refresh
+  useEffect(() => {
+    let activeUsername = currentUser?.username
+    if (!activeUsername) {
+      try {
+        const stored = sessionStorage.getItem('watchsync_user') || localStorage.getItem('watchsync_user')
+        if (stored) activeUsername = JSON.parse(stored)?.username
+      } catch {}
+    }
+
+    if (!socket || !isConnected || !roomId || !activeUsername) return
+
+    // Re-register user socket into the room
+    socket.emit(EVENTS.JOIN_ROOM, {
+      roomId,
+      username: activeUsername,
+    })
+  }, [socket, isConnected, roomId, currentUser?.username])
 
   // Subscribe to all socket events and manage connection/reconnection flow
   useEffect(() => {
@@ -121,6 +145,21 @@ export default function RoomPage() {
 
     socket.on('poll_updated', ({ activePoll }) => {
       setActivePoll(activePoll)
+    })
+
+    socket.on(EVENTS.ROLE_UPDATED, ({ socketId, role, username }) => {
+      updateParticipantRole({ socketId, role, username })
+      if (socketId === socket.id || (currentUser?.username && currentUser.username.toLowerCase() === username?.toLowerCase())) {
+        soundFx.playGrantFanfare()
+        toast.success(`Your role was updated to ${role.toUpperCase()}!`, { icon: '👑' })
+      } else {
+        toast(`${username} is now a ${role.toUpperCase()}`, { icon: '🛡️' })
+      }
+    })
+
+    socket.on(EVENTS.KICKED, ({ message }) => {
+      toast.error(message || 'You were removed from the room by the host.')
+      navigate('/')
     })
 
     socket.on(EVENTS.QUEUE_SYNC, ({ queue }) => {
