@@ -39,11 +39,11 @@ export default function RoomHeader() {
 
   return (
     <>
-      <header className="bg-[#131315]/80 backdrop-blur-md shadow-sm fixed top-0 w-full z-50 flex justify-between items-center px-3 md:px-6 py-3 border-b border-[#5b403e]/20">
+      <header className="bg-[#131315]/90 backdrop-blur-md shadow-sm fixed top-0 w-full z-50 flex justify-between items-center px-2.5 sm:px-4 md:px-6 py-2.5 md:py-3 border-b border-[#5b403e]/20">
         {/* Left: Brand + Room Info */}
-        <div className="flex items-center gap-3">
-          <img src="/favicon.svg" alt="WatchSync Logo" className="w-7 h-7 drop-shadow-[0_0_8px_rgba(255,84,81,0.5)]" />
-          <h1 className="font-[Geist,sans-serif] text-[24px] font-bold text-[#ffb3ad] tracking-[-0.01em]">
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+          <img src="/favicon.svg" alt="WatchSync Logo" className="w-6 h-6 sm:w-7 sm:h-7 drop-shadow-[0_0_8px_rgba(255,84,81,0.5)]" />
+          <h1 className="font-[Geist,sans-serif] text-[17px] sm:text-[24px] font-bold text-[#ffb3ad] tracking-[-0.01em] whitespace-nowrap">
             WatchSync
           </h1>
 
@@ -76,12 +76,12 @@ export default function RoomHeader() {
         </div>
 
         {/* Right: Connection indicator, Request Control, Polls, Latency Ping, SFX Toggle & Theme Picker */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
           {/* Controllers get Create Poll button */}
           {canControl && (
             <button
               onClick={() => setShowPollModal(true)}
-              className="px-3 py-1.5 bg-[#571bc1]/20 hover:bg-[#571bc1] border border-[#d0bcff]/30 text-[#d0bcff] hover:text-white rounded-full font-[Geist,sans-serif] text-[12px] font-bold transition-all shadow-md flex items-center gap-1.5"
+              className="px-2 sm:px-3 py-1.5 bg-[#571bc1]/20 hover:bg-[#571bc1] border border-[#d0bcff]/30 text-[#d0bcff] hover:text-white rounded-full font-[Geist,sans-serif] text-[11px] sm:text-[12px] font-bold transition-all shadow-md flex items-center gap-1 cursor-pointer whitespace-nowrap"
               title="Create a Live Room Poll or Quiz"
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -93,39 +93,40 @@ export default function RoomHeader() {
           {!canControl && (
             <button
               onClick={handleRequestControl}
-              className="px-3 py-1.5 bg-[#ff5451]/15 hover:bg-[#ff5451] border border-[#ff5451]/30 text-[#ffb3ad] hover:text-white rounded-full font-[Geist,sans-serif] text-[12px] font-bold transition-all shadow-md flex items-center gap-1.5"
+              className="px-2 sm:px-3 py-1.5 bg-[#ff5451]/15 hover:bg-[#ff5451] border border-[#ff5451]/30 text-[#ffb3ad] hover:text-white rounded-full font-[Geist,sans-serif] text-[11px] sm:text-[12px] font-bold transition-all shadow-md flex items-center gap-1 cursor-pointer whitespace-nowrap"
               title="Ask Host for Playback Control Permissions"
             >
-              <Crown className="w-3.5 h-3.5" />
-              <span>Request Control</span>
+              <Crown className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="hidden sm:inline">Request Control</span>
+              <span className="sm:hidden">Control</span>
             </button>
           )}
 
           {/* Real-time Network Ping Latency Chip */}
           <button
             onClick={() => setShowStatsModal(true)}
-            className="px-2.5 py-1.5 bg-[#131315]/80 hover:bg-[#201f22] border border-[#ff5451]/30 text-[#ff5451] hover:text-[#ffb3ad] rounded-full font-[Geist,sans-serif] text-[12px] font-bold transition-all shadow-sm flex items-center gap-1"
+            className="px-2 sm:px-2.5 py-1.5 bg-[#131315]/80 hover:bg-[#201f22] border border-[#ff5451]/30 text-[#ff5451] hover:text-[#ffb3ad] rounded-full font-[Geist,sans-serif] text-[11px] sm:text-[12px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer whitespace-nowrap"
             title="Open Network Diagnostics & WebSockets Telemetry"
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Zap className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{latency}ms</span>
           </button>
 
           {/* Sound Effects Toggle Button */}
           <button
             onClick={handleToggleSfx}
-            className={`p-2 rounded-full border transition-all duration-200 ${
+            className={`p-1.5 sm:p-2 rounded-full border transition-all duration-200 cursor-pointer ${
               isMuted
                 ? 'bg-[#131315]/80 border-red-500/30 text-red-400 hover:bg-red-500/10'
                 : 'bg-[#131315]/80 border-[#ff5451]/30 text-[#ffb3ad] hover:bg-[#ff5451]/15 shadow-[0_0_10px_rgba(255,84,81,0.2)]'
             }`}
             title={isMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
           >
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
 
           <ThemePicker />
-          <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12px] font-[Geist,sans-serif] font-medium ${
+          <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12px] font-[Geist,sans-serif] font-medium ${
             isConnected
               ? 'bg-green-500/10 border-green-500/20 text-green-400'
               : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
