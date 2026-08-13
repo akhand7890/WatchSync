@@ -4,22 +4,27 @@ import axios from 'axios'
  * api.js — Axios instance for backend REST calls.
  * Base URL reads from env or defaults to proxied /api.
  */
-let baseUrl = import.meta.env.VITE_API_URL || '/api'
-if (baseUrl !== '/api' && !baseUrl.endsWith('/api') && !baseUrl.endsWith('/api/')) {
+let baseUrl = import.meta.env.VITE_API_URL || 'https://watchsync-impu.onrender.com/api'
+if (!baseUrl.endsWith('/api') && !baseUrl.endsWith('/api/')) {
   baseUrl = `${baseUrl.replace(/\/$/, '')}/api`
 }
+
+console.log('[WatchSync API] Target Base URL:', baseUrl)
 
 const api = axios.create({
   baseURL: baseUrl,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
+  timeout: 15000,
 })
 
 // Response interceptor — unwrap data or throw structured error
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    const message = error.response?.data?.message || error.message || 'Something went wrong'
+    let message = error.response?.data?.message || error.message || 'Something went wrong'
+    if (error.message === 'Network Error') {
+      message = `Network Error: Unable to reach backend API at ${baseUrl}. Please check Vercel environment variables.`
+    }
     return Promise.reject(new Error(message))
   }
 )

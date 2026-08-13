@@ -10,7 +10,7 @@ import { io } from 'socket.io-client'
  */
 const SocketContext = createContext(null)
 
-let socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
+let socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.PROD ? 'https://watchsync-impu.onrender.com' : 'http://localhost:5000')
 if (socketUrl.endsWith('/api')) {
   socketUrl = socketUrl.slice(0, -4)
 } else if (socketUrl.endsWith('/api/')) {
