@@ -14,10 +14,17 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
+    // Ignore DOM unmount race condition errors caused by third-party DOM mutations (YouTube IFrame / browser extensions)
+    if (error?.message?.includes?.('removeChild') || error?.message?.includes?.('Node')) {
+      return { hasError: false, error: null }
+    }
     return { hasError: true, error }
   }
 
   componentDidCatch(error, errorInfo) {
+    if (error?.message?.includes?.('removeChild') || error?.message?.includes?.('Node')) {
+      return
+    }
     console.error('WatchSync Error Boundary caught an error:', error, errorInfo)
   }
 

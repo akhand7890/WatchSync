@@ -280,8 +280,10 @@ export default function VideoPlayer() {
           <VideoUrlInput />
         ) : (
           <>
-            {/* YouTube IFrame target */}
-            <div id="yt-player" className="w-full h-full" />
+            {/* Protected container to isolate YouTube IFrame DOM mutations from React virtual DOM */}
+            <div key="yt-player-container" className="w-full h-full">
+              <div id="yt-player" className="w-full h-full" />
+            </div>
 
             {/* Click & Double-click detector overlay */}
             <div
