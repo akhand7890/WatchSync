@@ -195,6 +195,14 @@ export default function VideoPlayer() {
               }
             }
           },
+          onError: (e) => {
+            console.warn('[YouTube Player] Error code:', e.data)
+            if (e.data === 101 || e.data === 150) {
+              toast.error('Video owner has disabled embedding on external websites. Try another search result!', { id: 'yt-embed-error' })
+            } else if (e.data === 100) {
+              toast.error('Video not found or removed from YouTube.', { id: 'yt-embed-error' })
+            }
+          },
         },
       })
     }
