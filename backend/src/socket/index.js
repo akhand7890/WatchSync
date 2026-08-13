@@ -17,7 +17,7 @@ function initSocket(httpServer) {
 
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
+      origin: true,
       methods: ['GET', 'POST'],
       credentials: true,
     },

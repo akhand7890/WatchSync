@@ -21,15 +21,19 @@ const allowedOrigins = [
 ].filter(Boolean)
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: true,
   credentials: true,
 }))
 app.use(express.json({ limit: '10kb' }))
 app.use(express.urlencoded({ extended: true }))
 
 /* =========================================================
-   Health check
+   Health check & Root route
    ========================================================= */
+app.get('/', (req, res) => {
+  res.json({ message: 'WatchSync API Server is running live!', status: 'online', timestamp: new Date().toISOString() })
+})
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
