@@ -36,7 +36,12 @@ export default function YouTubeSearchModal({ isOpen, onClose, initialQuery = '' 
 
       // Primary Strategy: WatchSync Backend Proxy Endpoint
       try {
-        const res = await fetch(`/api/rooms/search?q=${encodeURIComponent(q)}`)
+        let searchApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://watchsync-impu.onrender.com/api' : '/api')
+        if (!searchApiUrl.endsWith('/api') && !searchApiUrl.endsWith('/api/')) {
+          searchApiUrl = `${searchApiUrl.replace(/\/$/, '')}/api`
+        }
+
+        const res = await fetch(`${searchApiUrl}/rooms/search?q=${encodeURIComponent(q)}`)
         if (res.ok) {
           const data = await res.json()
           if (data.success && data.items && data.items.length > 0) {
